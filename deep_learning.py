@@ -4,6 +4,8 @@ from keras.layers import Dense, Activation, Flatten, LSTM, TimeDistributed, Embe
 from keras.optimizers import Adam
 from keras.utils import to_categorical
 
+from sklearn.model_selection import train_test_split
+
 import numpy as np
 import pandas as pd
 import random
@@ -22,22 +24,31 @@ def read_window_file(path):
     return windows, structures
 
 
-file_based_windows, file_based_structures = read_window_file('windows_and_structures.csv')
+def get_shape(satz):
+    counter = 1
+    current = satz
+    print('(', end='')
+    while True:
+        if hasattr(current, '__len__'):
+            if counter != 1:
+                print(', ', end='')
+            print(str(len(current)), end='')
+            current = current[0]
+            counter += 1
+        else:
+            print(')')
+            print('First entry in last dimension:', str(current))
+            break
 
 
 def run_learning_on_window_sequences(points, labels, length, verbose=1, test_fraction=0.2, epochs=150, batch_size=100):
     # Function to automatically run an RNN training
+    print('Selecting train and test set.')
+
     X = X = np.array([[point] for point in points])
     Y = np.array(labels)
-    
-    indices = range(len(X))
-    test_indices = random.sample(indices, int(len(X) * test_fraction))
-    
-    X_train = np.array([X[i] for i in indices if i not in test_indices])
-    Y_train = np.array([Y[i] for i in indices if i not in test_indices])
-    
-    X_test = np.array([X[i] for i in test_indices])
-    Y_test = np.array([Y[i] for i in test_indices])
+
+    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.33, random_state=666)
     
     if verbose > 0:
         print('Input shape:')
@@ -67,4 +78,12 @@ def run_learning_on_window_sequences(points, labels, length, verbose=1, test_fra
     return scores[1]
 
 
-run_learning_on_window_sequences(blomapped_windows, consensus_structures, 21, verbose=2)
+def main():
+    print('Reading input file.')
+    file_based_windows, file_based_structures = read_window_file('windows_and_structures.csv')
+    run_learning_on_window_sequences(file_based_windows, file_based_structures, 21, verbose=2, batch_size=1024, epochs=25)
+
+
+if __name__ == '__main__':
+    main()
+    
