@@ -1,4 +1,8 @@
 
+'''
+Script to play around with neural networks.
+'''
+
 from keras.models import Sequential
 from keras.layers import Dense, Activation, Flatten, LSTM, TimeDistributed, Embedding
 from keras.optimizers import Adam
@@ -9,6 +13,7 @@ from sklearn.model_selection import train_test_split
 import numpy as np
 import pandas as pd
 import random
+import sys
 
 
 def read_window_file(path):
@@ -41,7 +46,7 @@ def get_shape(satz):
             break
 
 
-def run_learning_on_window_sequences(points, labels, length, verbose=1, test_fraction=0.2, epochs=150, batch_size=100):
+def run_learning_on_window_sequences(points, labels, length, verbose=1, test_fraction=0.2, epochs=150, batch_size=100, network='dutsch'):
     # Function to automatically run an RNN training
     print('Selecting train and test set.')
 
@@ -58,8 +63,16 @@ def run_learning_on_window_sequences(points, labels, length, verbose=1, test_fra
 
     # create model
     model = Sequential()
-    model.add(LSTM(units=100, input_shape=(1, 5 * length)))
-    model.add(Dense(3, activation='sigmoid'))
+
+    if network == 'dutsch':
+        model.add(LSTM(units=100, input_shape=(1, 5 * length)))
+        model.add(Dense(3, activation='sigmoid'))
+    if network == 'heumos':
+        model.add(GRU(256, batch_input_shape=(None, None, 640), return_sequences=True, activation='relu'))
+        model.add(Dropout(0.2))
+        model.add(GRU(128, batch_input_shape=(None, None, 640), return_sequences=False, activation='relu'))
+        model.add(Dropout(0.2))
+        model.add(Dense(384, activation="softmax"))
 
     if verbose > 0: 
         print(model.summary(90))
@@ -79,11 +92,20 @@ def run_learning_on_window_sequences(points, labels, length, verbose=1, test_fra
 
 
 def main():
+    epochs = 150
+    batch_size = 1024
+    network_type = 'dutsch'
+    if len(sys.argv) > 0:
+        epochs = int(sys.argv[1])
+        if len(sys.argv) > 1:
+            batch_size = int(sys.argv[2])
+            if len(sys.argv) > 2:
+                network_type = sys.argv[3]
     print('Reading input file.')
     file_based_windows, file_based_structures = read_window_file('windows_and_structures.csv')
-    run_learning_on_window_sequences(file_based_windows, file_based_structures, 21, verbose=2, batch_size=1024, epochs=25)
+    run_learning_on_window_sequences(file_based_windows, file_based_structures, 21, verbose=2, batch_size=1024, epochs=25, network=network_type)
 
 
 if __name__ == '__main__':
     main()
-    
+
